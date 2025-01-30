@@ -1,4 +1,4 @@
-import jsonify as jsonify
+import flask as jsonify
 from flask import Flask, request, jsonify,send_file
 from flask_sqlalchemy import SQLAlchemy
 import barcode
