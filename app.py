@@ -254,25 +254,22 @@ def add_product():
         db.session.add(new_product)
         db.session.commit()
 
-        # Generate the barcode using the product ID (after saving)
-        barcode_data = new_product.generate_barcode(new_product.id)
+        # Comment out barcode generation
+        # barcode_data = new_product.generate_barcode(new_product.id)
 
-        if barcode_data:
-            # Save the barcode image as binary data in the database
-            new_product.barcode = barcode_data
-            db.session.commit()
+        # if barcode_data:
+        #     # Save the barcode image as binary data in the database
+        #     new_product.barcode = barcode_data
+        #     db.session.commit()
 
-            return jsonify({
-                'message': f"Product '{product_name}' added successfully.",
-                'product_id': new_product.id,
-                'barcode': f"Barcode generated and saved for product ID {new_product.id}"
-            }), 201
-        else:
-            return jsonify({'error': 'Error generating barcode'}), 400
+        return jsonify({
+            'message': f"Product '{product_name}' added successfully.",
+            'product_id': new_product.id,
+            # 'barcode': f"Barcode generated and saved for product ID {new_product.id}"
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
-
 
 # Route to add a new repair
 @app.route('/add_repair', methods=['POST'])
@@ -355,7 +352,7 @@ def assign_employee(product_id):
     else:
         return jsonify({'error': 'Product not found'}), 404
 
-
+''' 
 @app.route('/scan_barcode', methods=['POST'])
 def scan_barcode():
     # Get the barcode data from the request (the barcode will contain the product's ID)
@@ -398,7 +395,7 @@ def scan_barcode():
 
         return jsonify(response), 200
     else:
-        return jsonify({'error': 'Product not found for the scanned barcode'}), 404
+        return jsonify({'error': 'Product not found for the scanned barcode'}), 404 '''
 
 
 @app.route('/add_intangible_asset', methods=['POST'])
