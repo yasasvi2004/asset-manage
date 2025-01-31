@@ -31,7 +31,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SESSION_COOKIE_NAME'] = 'your_session_cookie_name'  # Optional, but can be set for clarity
 
 # Configure the app with database URI (modify with your actual credentials)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_n145_user:eaN18TgyWIRJsQbFodZuGiLWPAbvdxbn@dpg-cudn1nd2ng1s73ejpr80-a.oregon-postgres.render.com/assetmanagement_n145'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_nhwn_user:m6NR2TmbCyphD4ufohtEb9Bq8RcGikdE@dpg-cue64v5ds78s73a7n58g-a/assetmanagement_nhwn'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Directory to save barcode images in the project directory (optional)
@@ -180,6 +180,7 @@ class User(db.Model, UserMixin):
     password=db.Column(db.String(200), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    phone_number=db.Column(db.String(20),unique=True, nullable=False)
 
 
 @login_manager.user_loader
@@ -778,7 +779,9 @@ def register():
         usernname=data['username'],
         password=hashed_password,
         name=data['name'],
-        email=data['email']
+        email=data['email'],
+        phone_number=data['phone_number']
+
     )
     db.session.add(new_user)
     db.session.commit()
