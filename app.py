@@ -178,7 +178,9 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username=db.Column(db.String(80), unique=True, nullable=False)
     password=db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -772,7 +774,12 @@ def generate_maintenance_report():
 def register():
     data = request.get_json()
     hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
-    new_user = User(username=data['username'], password=hashed_password, role=data['role'])
+    new_user = User(
+        usernname=data['username'],
+        password=hashed_password,
+        name=data['name'],
+        email=data['email']
+    )
     db.session.add(new_user)
     db.session.commit()
     return jsonify({'message': 'Registered successfully'}), 201
