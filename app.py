@@ -776,7 +776,7 @@ def register():
     data = request.get_json()
     hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
     new_user = User(
-        usernname=data['username'],
+        username=data['username'],
         password=hashed_password,
         name=data['name'],
         email=data['email'],
