@@ -16,6 +16,7 @@ import logging
 from flask_cors import CORS
 import logging
 
+
 # Initialize the Flask app
 
 
@@ -30,7 +31,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SESSION_COOKIE_NAME'] = 'your_session_cookie_name'  # Optional, but can be set for clarity
 
 # Configure the app with database URI (modify with your actual credentials)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:yasasvi12@localhost/assetmanagementdb1'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_n145_user:eaN18TgyWIRJsQbFodZuGiLWPAbvdxbn@dpg-cudn1nd2ng1s73ejpr80-a.oregon-postgres.render.com/assetmanagement_n145'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Directory to save barcode images in the project directory (optional)
@@ -786,6 +787,7 @@ def logout():
     except Exception as e:
         logging.error(f"Error during logout: {str(e)}")
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
+
 
 
 
