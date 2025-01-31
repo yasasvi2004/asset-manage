@@ -31,7 +31,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SESSION_COOKIE_NAME'] = 'your_session_cookie_name'  # Optional, but can be set for clarity
 
 # Configure the app with database URI (modify with your actual credentials)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_nhwn_user:m6NR2TmbCyphD4ufohtEb9Bq8RcGikdE@dpg-cue64v5ds78s73a7n58g-a/assetmanagement_nhwn'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_an8v_user:qdPpLhxJByrV9ApWKjAfmuCLkFti05WH@dpg-cue6n4tsvqrc73d5a0lg-a.oregon-postgres.render.com/assetmanagement_an8v'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Directory to save barcode images in the project directory (optional)
