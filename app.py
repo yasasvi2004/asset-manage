@@ -31,7 +31,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SESSION_COOKIE_NAME'] = 'your_session_cookie_name'  # Optional, but can be set for clarity
 
 # Configure the app with database URI (modify with your actual credentials)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_an8v_user:qdPpLhxJByrV9ApWKjAfmuCLkFti05WH@dpg-cue6n4tsvqrc73d5a0lg-a.oregon-postgres.render.com/assetmanagement_an8v'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://assetmanagement_2nrj_user:6tIhGApu4uX9Hcx7AUJ1iXNSyAee7GPG@dpg-cue8pft2ng1s7384v3h0-a/assetmanagement_2nrj'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Directory to save barcode images in the project directory (optional)
@@ -179,7 +179,7 @@ class User(db.Model, UserMixin):
     password=db.Column(db.String(200), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    phone_number=db.Column(db.String(20),unique=True, nullable=False)
+    user_type=db.Column(db.String(20), nullable=False)
 
 
 @login_manager.user_loader
@@ -779,7 +779,7 @@ def register():
         password=hashed_password,
         name=data['name'],
         email=data['email'],
-        phone_number=data['phone_number']
+        user_type=data['user_type']
 
     )
     db.session.add(new_user)
@@ -797,7 +797,6 @@ def logout():
         logging.error(f"Error during logout: {str(e)}")
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
 
-print(dir(barcode))  # Check available attributes in the barcode module
 
 
 
