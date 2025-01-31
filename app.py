@@ -126,7 +126,6 @@ class Product(db.Model):
             print(f"Error generating barcode: {e}")
             return None
 
-
 # Define the Repair model
 class Repair(db.Model):
     __tablename__ = 'repairs'
@@ -797,6 +796,8 @@ def logout():
     except Exception as e:
         logging.error(f"Error during logout: {str(e)}")
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
+
+print(dir(barcode))  # Check available attributes in the barcode module
 
 
 
