@@ -6,24 +6,17 @@ from barcode.writer import ImageWriter
 import io
 import os
 from flask_migrate import Migrate
-from datetime import datetime
-from flask_login import UserMixin
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-from flask import abort
-import logging
 from flask_cors import CORS
 import logging
-
-
-# Initialize the Flask app
-
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 
 
 
 
-from fpdf import FPDF
+
+
+
 
 # Initialize Flask app and SQLAlchemy
 app = Flask(__name__)
@@ -44,10 +37,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 CORS(app)
 
-#login
-login_manager=LoginManager()
-login_manager.init_app(app)
-login_manager.login_view='login'
+
 
 
 
@@ -87,12 +77,11 @@ class Product(db.Model):
     purchase_date = db.Column(db.Date, nullable=True)  # Date of purchase
     status = db.Column(db.String(50), nullable=True)  # Status of the product (Available/Allocated/Under Maintenance)
     condition = db.Column(db.String(50), nullable=True)  # Condition of the product (e.g., new, used, damaged)
-
     # Define relationship with Repairs (one-to-many relationship)
     repairs = db.relationship('Repair', backref='product', lazy=True)
-
+    cost = db.Column(db.Float, nullable=True)
     def __init__(self, product_name, serial_number, company, employee_id=None, purchase_date=None, status=None,
-                 condition=None):
+                 condition=None,cost=None):
         self.product_name = product_name
         self.serial_number = serial_number
         self.company = company
@@ -100,6 +89,8 @@ class Product(db.Model):
         self.purchase_date = purchase_date
         self.status = status
         self.condition = condition
+        self.cost=cost
+
 
     def generate_barcode(self, product_id):
         try:
@@ -158,12 +149,12 @@ class IntangibleAsset(db.Model):
     vendor = db.Column(db.String(255), nullable=True)  # Vendor or provider name
     assigned_to = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)  # Assigned employee (optional)
     status = db.Column(db.String(50), nullable=False, default='active')  # Status (e.g., active, expired, inactive)
-
+    subscription_cost = db.Column(db.Float, nullable=True)
     # Define relationship with Employee
     assigned_employee = db.relationship('Employee', backref='intangible_assets', lazy=True)
 
     def __init__(self, name, license_key=None, validity_start_date=None, validity_end_date=None, vendor=None,
-                 assigned_to=None, status='active'):
+                 assigned_to=None, status='active',subscription_cost=None):
         self.name = name
         self.license_key = license_key
         self.validity_start_date = validity_start_date
@@ -171,6 +162,7 @@ class IntangibleAsset(db.Model):
         self.vendor = vendor
         self.assigned_to = assigned_to
         self.status = status
+        self.subscription_cost = subscription_cost
 
 
 class User(db.Model, UserMixin):
@@ -182,9 +174,19 @@ class User(db.Model, UserMixin):
     user_type=db.Column(db.String(120), nullable=False)
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+class AdditionalAsset(db.Model):
+    __tablename__ = 'additional_assets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)  # Name of the asset
+    number = db.Column(db.Integer, nullable=False)  # Quantity or number of assets
+    status = db.Column(db.String(50), nullable=True)  # Status of the asset (e.g., 'Available', 'Requested', etc.)
+
+    def __init__(self, name, number, status=None):
+        self.name = name
+        self.number = number
+        self.status = status
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -196,28 +198,6 @@ def login():
         return jsonify({'message': 'login successfully'}), 200
     return jsonify({'error': 'Invalid username or password'}), 401
 
-
-
-
-@app.route('/protected')
-@login_required
-def protected():
-    print(f"Current user role: {current_user.role}")
-    return jsonify({'message': f'Hello, {current_user.username}! Your role is {current_user.role}.'})
-
-
-
-def role_required(*roles):
-    def wrapper(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated:
-                return jsonify({'error': 'Authentication required'}), 401
-            if current_user.role not in roles:
-                return jsonify({'error': 'Unauthorized access'}), 403
-            return f(*args, **kwargs)
-        return decorated_function
-    return wrapper
 
 
 # Route to add a new product
@@ -352,50 +332,7 @@ def assign_employee(product_id):
     else:
         return jsonify({'error': 'Product not found'}), 404
 
-''' 
-@app.route('/scan_barcode', methods=['POST'])
-def scan_barcode():
-    # Get the barcode data from the request (the barcode will contain the product's ID)
-    barcode_scanned = request.get_json().get('barcode')
 
-    if not barcode_scanned:
-        return jsonify({'error': 'No barcode provided'}), 400
-
-    # Query the product by the scanned barcode (which is the product ID)
-    product = Product.query.get(barcode_scanned)
-
-    if product:
-        # Initialize response data
-        response = {
-            'product_name': product.product_name,
-            'serial_number': product.serial_number,
-            'company': product.company,
-            'barcode': barcode_scanned
-        }
-
-        # Get employee details if assigned
-        if product.employee_id:
-            employee = Employee.query.get(product.employee_id)
-            if employee:
-                response['employee'] = {
-                    'name': employee.name,
-                    'designation': employee.designation,
-                    'email': employee.email
-                }
-
-        # Get repair details if assigned
-        repair = Repair.query.filter_by(product_id=product.id).first()
-        if repair:
-            response['repair_details'] = {
-                'issue_description': repair.issue_description,
-                'repair_center': repair.repair_center,
-                'repair_date': repair.repair_date,
-                'return_date': repair.return_date
-            }
-
-        return jsonify(response), 200
-    else:
-        return jsonify({'error': 'Product not found for the scanned barcode'}), 404 '''
 
 
 @app.route('/add_intangible_asset', methods=['POST'])
@@ -499,7 +436,6 @@ def edit_employee_status(employee_id):
 
 #view asset listings
 @app.route('/asset_listings', methods=['GET'])
-@role_required('hr_manager', 'higher_management')
 def get_asset_listings():
     try:
         # Fetch all products (tangible assets)
@@ -713,57 +649,6 @@ def get_repair_history(product_id):
         print(e)
         return jsonify({"error": "Internal server error"}), 500
 
-@app.route('/generate_maintenance_report', methods=['GET'])
-def generate_maintenance_report():
-    try:
-        # Fetch all repair records from the database
-        repairs = Repair.query.all()
-
-        # Create a PDF document
-        pdf = FPDF()
-        pdf.add_page('L')  # Use landscape orientation
-        pdf.set_font("Arial", size=10)
-
-        # Title
-        pdf.cell(280, 10, txt="Maintenance Report", ln=True, align='C')
-
-        # Column headers with adjusted widths
-        pdf.cell(20, 10, 'Asset ID', 1)
-        pdf.cell(40, 10, 'Product Name', 1)
-        pdf.cell(40, 10, 'Serial Number', 1)
-        pdf.cell(70, 10, 'Description', 1)
-        pdf.cell(30, 10, 'Repair Center', 1)
-        pdf.cell(30, 10, 'Repair Date', 1)
-        pdf.cell(30, 10, 'Return Date', 1)
-        pdf.cell(20, 10, 'Status', 1)
-        pdf.ln()
-
-        # Add data to the PDF
-        for repair in repairs:
-            product = Product.query.get(repair.product_id)
-            status = "Completed" if repair.return_date <= datetime.now().date() else "In Progress"
-
-            if product:
-                pdf.cell(20, 10, str(product.id), 1)
-                pdf.cell(40, 10, product.product_name[:25], 1)
-                pdf.cell(40, 10, product.serial_number[:25], 1)
-                pdf.cell(70, 10, repair.issue_description[:45], 1)
-                pdf.cell(30, 10, repair.repair_center[:20], 1)
-                pdf.cell(30, 10, repair.repair_date.strftime('%Y-%m-%d'), 1)
-                pdf.cell(30, 10, repair.return_date.strftime('%Y-%m-%d'), 1)
-                pdf.cell(20, 10, status, 1)
-                pdf.ln()
-
-        # Save the PDF to a file
-        report_filename = f"maintenance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf.output(report_filename)
-
-        return send_file(report_filename, as_attachment=True)
-
-    except Exception as e:
-        print(e)
-        return jsonify({"error": "Error generating maintenance report"}), 500
-
 
 
 
@@ -793,6 +678,170 @@ def logout():
     except Exception as e:
         logging.error(f"Error during logout: {str(e)}")
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
+
+
+@app.route('/monitor_intangible_budget', methods=['GET'])
+def monitor_intangible_budget():
+    try:
+        # Fetch all intangible assets
+        intangible_assets = IntangibleAsset.query.all()
+
+        # Calculate the total subscription cost for intangible assets
+        total_intangible_cost = sum(
+            asset.subscription_cost for asset in intangible_assets if asset.subscription_cost
+        )
+
+        # Define your budget limit for intangible assets
+        intangible_budget_limit =5000  # Example budget limit for intangible assets
+
+        # Determine if the total intangible cost is within the budget
+        within_budget = total_intangible_cost <= intangible_budget_limit
+
+        # Prepare the response
+        response = {
+            "total_intangible_cost": total_intangible_cost,
+            "intangible_budget_limit": intangible_budget_limit,
+            "within_budget": within_budget
+        }
+
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/strategic_reports', methods=['GET'])
+def strategic_reports():
+    try:
+        # Fetch all tangible and intangible assets
+        tangible_assets = Product.query.all()
+        intangible_assets = IntangibleAsset.query.all()
+
+        # Calculate total costs
+        total_tangible_cost = sum(asset.cost for asset in tangible_assets if asset.cost)
+        total_intangible_cost = sum(asset.subscription_cost for asset in intangible_assets if asset.subscription_cost)
+        total_cost = total_tangible_cost + total_intangible_cost
+
+        # Count total assets
+        total_tangible_assets = len(tangible_assets)
+        total_intangible_assets = len(intangible_assets)
+
+        # Prepare allocation details
+        allocation_details = []
+        for asset in tangible_assets:
+            if asset.employee_id:
+                employee = Employee.query.get(asset.employee_id)
+                allocation_details.append({
+                    "asset_type": "Tangible",
+                    "asset_name": asset.product_name,
+                    "allocated_to": employee.name if employee else "Unassigned"
+                })
+
+        for asset in intangible_assets:
+            if asset.assigned_to:
+                employee = Employee.query.get(asset.assigned_to)
+                allocation_details.append({
+                    "asset_type": "Intangible",
+                    "asset_name": asset.name,
+                    "allocated_to": employee.name if employee else "Unassigned"
+                })
+
+        # Prepare the response
+        response = {
+            "total_tangible_assets": total_tangible_assets,
+            "total_intangible_assets": total_intangible_assets,
+            "total_cost": total_cost,
+            "allocation_details": allocation_details
+        }
+
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/add_additional_asset', methods=['POST'])
+def add_additional_asset():
+    # Get the data from the request
+    data = request.get_json()
+
+    # Check if 'name' and 'number' are in the request data
+    if not data.get('name') or not data.get('number'):
+        return jsonify({'message': 'Name and number are required'}), 400
+
+    # Set default status to 'Pending' if not provided
+    status = data.get('status', 'Pending')
+
+    # Create a new AdditionalAsset instance with the default status
+    new_asset = AdditionalAsset(name=data['name'], number=data['number'], status=status)
+
+    # Add the new asset to the database
+    db.session.add(new_asset)
+    db.session.commit()
+
+    # Return a success response
+    return jsonify({
+        'message': 'Additional asset added successfully',
+        'asset': {
+            'id': new_asset.id,
+            'name': new_asset.name,
+            'number': new_asset.number,
+            'status': new_asset.status
+        }
+    }), 201
+
+
+@app.route('/update_asset_status/<int:asset_id>', methods=['PUT'])
+def update_asset_status(asset_id):
+    # Get the asset by its ID
+    asset = AdditionalAsset.query.get(asset_id)
+
+    # If the asset does not exist, return a 404 error
+    if not asset:
+        return jsonify({'message': 'Asset not found'}), 404
+
+    # Update the status to 'Approved'
+    asset.status = 'Approved'
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    # Return a success response
+    return jsonify({
+        'message': 'Asset status updated to Approved',
+        'asset': {
+            'id': asset.id,
+            'name': asset.name,
+            'number': asset.number,
+            'status': asset.status
+        }
+    }), 200
+
+
+@app.route('/get_pending_assets', methods=['GET'])
+def get_pending_assets():
+    # Query the database for assets with status 'Pending'
+    pending_assets = AdditionalAsset.query.filter_by(status='Pending').all()
+
+    # If no pending assets are found, return a message
+    if not pending_assets:
+        return jsonify({'message': 'No pending assets found'}), 404
+
+    # Prepare the response with the details of the pending assets
+    assets_data = [{
+        'id': asset.id,
+        'name': asset.name,
+        'number': asset.number,
+        'status': asset.status
+    } for asset in pending_assets]
+
+    # Return the response with the list of pending assets
+    return jsonify({
+        'message': 'Pending assets fetched successfully',
+        'assets': assets_data
+    }), 200
+
+
+
 
 
 
